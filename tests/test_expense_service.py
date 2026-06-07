@@ -8,8 +8,15 @@ from src.services.expense_service import ExpenseService
 
 
 class FakeExpenseRepository:
+    def __init__(self):
+        self.entity = None
+
     def create(self, entity):
+        self.entity = entity
         return entity
+
+    def get_by_id(self, entity_id):
+        return self.entity
 
     def get_all(self):
         return []
@@ -19,6 +26,9 @@ class FakeExpenseRepository:
 
     def get_by_category(self, category_id):
         return []
+
+    def commit(self):
+        pass
 
 
 class FakeCategoryRepository:
@@ -38,3 +48,17 @@ def test_create_expense_requires_category():
 
     with pytest.raises(ValidationException):
         service.create_expense(ExpenseCreateSchema(amount=100, category_id=0, expense_date=date.today()))
+
+
+def test_update_expense_updates_existing_record():
+    repository = FakeExpenseRepository()
+    service = ExpenseService(repository, FakeCategoryRepository())
+    expense = service.create_expense(ExpenseCreateSchema(amount=100, category_id=1, expense_date=date.today()))
+
+    updated = service.update_expense(
+        expense.id,
+        ExpenseCreateSchema(amount=175, category_id=1, expense_date=date.today(), payment_method="Card"),
+    )
+
+    assert updated.amount == 175
+    assert updated.payment_method == "Card"
