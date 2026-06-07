@@ -1,10 +1,8 @@
-import pandas as pd
 import streamlit as st
 
 from src.core.exceptions import BudgetFlowException
 from src.core.service_factory import get_category_service, get_income_service
 from src.schemas.income_schema import IncomeCreateSchema
-from src.ui.components.tables import render_dataframe_table
 
 
 def render_incomes_page() -> None:
@@ -43,41 +41,43 @@ def render_incomes_page() -> None:
 
 
 def _render_incomes_table(incomes, income_service, category_options: dict[str, int]) -> None:
-    data = [
-        {
-            "ID": income.id,
-            "Date": income.income_date,
-            "Source": income.source,
-            "Category": income.category.name if income.category else "",
-            "Amount": income.amount,
-            "Recurring": income.is_recurring,
-            "Description": income.description,
-        }
-        for income in incomes
-    ]
-    render_dataframe_table(pd.DataFrame(data))
-
     if not incomes:
+        st.info("No records found.")
         return
 
-    st.subheader("Edit Income")
+    st.subheader("Income Records")
+    header_cols = st.columns([0.8, 1.3, 1.6, 1.5, 1.2, 1.1, 2.0, 0.8])
+    headers = ["ID", "Date", "Source", "Category", "Amount", "Recurring", "Description", ""]
+    for col, header in zip(header_cols, headers):
+        col.caption(header)
+
     for income in incomes:
-        label = f"{income.income_date} - {income.source} - {income.amount:,.2f}"
-        with st.expander(label):
-            if st.button("Edit", key=f"edit_income_{income.id}"):
-                st.session_state["editing_income_id"] = income.id
+        row_cols = st.columns([0.8, 1.3, 1.6, 1.5, 1.2, 1.1, 2.0, 0.8])
+        row_cols[0].write(income.id)
+        row_cols[1].write(income.income_date)
+        row_cols[2].write(income.source)
+        row_cols[3].write(income.category.name if income.category else "")
+        row_cols[4].write(f"{income.amount:,.2f}")
+        row_cols[5].write("Yes" if income.is_recurring else "No")
+        row_cols[6].write(income.description or "")
+        if row_cols[7].button("Edit", key=f"open_income_modal_{income.id}"):
+            _render_income_edit_dialog(income, income_service, category_options)
 
-            if st.session_state.get("editing_income_id") == income.id:
-                _render_income_edit_form(income, income_service, category_options)
 
-
-def _render_income_edit_form(income, income_service, category_options: dict[str, int]) -> None:
+@st.dialog("Edit Income")
+def _render_income_edit_dialog(income, income_service, category_options: dict[str, int]) -> None:
     category_names = [""] + list(category_options.keys())
     current_category = income.category.name if income.category else ""
     current_index = category_names.index(current_category) if current_category in category_names else 0
 
     with st.form(f"edit_income_form_{income.id}"):
-        amount = st.number_input("Amount", min_value=0.0, step=100.0, value=float(income.amount), key=f"income_amount_{income.id}")
+        amount = st.number_input(
+            "Amount",
+            min_value=0.0,
+            step=100.0,
+            value=float(income.amount),
+            key=f"income_amount_{income.id}",
+        )
         source = st.text_input("Source", value=income.source, key=f"income_source_{income.id}")
         income_date = st.date_input("Income date", value=income.income_date, key=f"income_date_{income.id}")
         category_name = st.selectbox("Category", category_names, index=current_index, key=f"income_category_{income.id}")
@@ -90,7 +90,6 @@ def _render_income_edit_form(income, income_service, category_options: dict[str,
             cancel = st.form_submit_button("Cancel")
 
     if cancel:
-        st.session_state.pop("editing_income_id", None)
         st.rerun()
 
     if save:
@@ -106,7 +105,6 @@ def _render_income_edit_form(income, income_service, category_options: dict[str,
                     is_recurring=is_recurring,
                 ),
             )
-            st.session_state.pop("editing_income_id", None)
             st.success("Income updated successfully.")
             st.rerun()
         except BudgetFlowException as exc:

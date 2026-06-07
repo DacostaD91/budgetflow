@@ -1,10 +1,8 @@
-import pandas as pd
 import streamlit as st
 
 from src.core.exceptions import BudgetFlowException
 from src.core.service_factory import get_category_service, get_expense_service
 from src.schemas.expense_schema import ExpenseCreateSchema
-from src.ui.components.tables import render_dataframe_table
 
 
 def render_expenses_page() -> None:
@@ -43,42 +41,43 @@ def render_expenses_page() -> None:
 
 
 def _render_expenses_table(expenses, expense_service, category_options: dict[str, int]) -> None:
-    data = [
-        {
-            "ID": expense.id,
-            "Date": expense.expense_date,
-            "Category": expense.category.name if expense.category else "",
-            "Payment Method": expense.payment_method,
-            "Amount": expense.amount,
-            "Recurring": expense.is_recurring,
-            "Description": expense.description,
-        }
-        for expense in expenses
-    ]
-    render_dataframe_table(pd.DataFrame(data))
-
     if not expenses:
+        st.info("No records found.")
         return
 
-    st.subheader("Edit Expense")
+    st.subheader("Expense Records")
+    header_cols = st.columns([0.8, 1.3, 1.7, 1.5, 1.2, 1.1, 2.1, 0.8])
+    headers = ["ID", "Date", "Category", "Payment", "Amount", "Recurring", "Description", ""]
+    for col, header in zip(header_cols, headers):
+        col.caption(header)
+
     for expense in expenses:
-        category_name = expense.category.name if expense.category else ""
-        label = f"{expense.expense_date} - {category_name} - {expense.amount:,.2f}"
-        with st.expander(label):
-            if st.button("Edit", key=f"edit_expense_{expense.id}"):
-                st.session_state["editing_expense_id"] = expense.id
+        row_cols = st.columns([0.8, 1.3, 1.7, 1.5, 1.2, 1.1, 2.1, 0.8])
+        row_cols[0].write(expense.id)
+        row_cols[1].write(expense.expense_date)
+        row_cols[2].write(expense.category.name if expense.category else "")
+        row_cols[3].write(expense.payment_method or "")
+        row_cols[4].write(f"{expense.amount:,.2f}")
+        row_cols[5].write("Yes" if expense.is_recurring else "No")
+        row_cols[6].write(expense.description or "")
+        if row_cols[7].button("Edit", key=f"open_expense_modal_{expense.id}"):
+            _render_expense_edit_dialog(expense, expense_service, category_options)
 
-            if st.session_state.get("editing_expense_id") == expense.id:
-                _render_expense_edit_form(expense, expense_service, category_options)
 
-
-def _render_expense_edit_form(expense, expense_service, category_options: dict[str, int]) -> None:
+@st.dialog("Edit Expense")
+def _render_expense_edit_dialog(expense, expense_service, category_options: dict[str, int]) -> None:
     category_names = [""] + list(category_options.keys())
     current_category = expense.category.name if expense.category else ""
     current_index = category_names.index(current_category) if current_category in category_names else 0
 
     with st.form(f"edit_expense_form_{expense.id}"):
-        amount = st.number_input("Amount", min_value=0.0, step=100.0, value=float(expense.amount), key=f"expense_amount_{expense.id}")
+        amount = st.number_input(
+            "Amount",
+            min_value=0.0,
+            step=100.0,
+            value=float(expense.amount),
+            key=f"expense_amount_{expense.id}",
+        )
         category_name = st.selectbox("Category", category_names, index=current_index, key=f"expense_category_{expense.id}")
         expense_date = st.date_input("Expense date", value=expense.expense_date, key=f"expense_date_{expense.id}")
         payment_method = st.text_input("Payment method", value=expense.payment_method or "", key=f"expense_payment_{expense.id}")
@@ -91,7 +90,6 @@ def _render_expense_edit_form(expense, expense_service, category_options: dict[s
             cancel = st.form_submit_button("Cancel")
 
     if cancel:
-        st.session_state.pop("editing_expense_id", None)
         st.rerun()
 
     if save:
@@ -107,7 +105,6 @@ def _render_expense_edit_form(expense, expense_service, category_options: dict[s
                     is_recurring=is_recurring,
                 ),
             )
-            st.session_state.pop("editing_expense_id", None)
             st.success("Expense updated successfully.")
             st.rerun()
         except BudgetFlowException as exc:
