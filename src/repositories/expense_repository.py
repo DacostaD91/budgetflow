@@ -21,6 +21,16 @@ class ExpenseRepository(BaseRepository):
     def get_by_category(self, category_id: int):
         return self.db.query(Expense).filter(Expense.category_id == category_id).all()
 
+    def get_recurring_before_month(self, year: int, month: int):
+        start_date = date(year, month, 1)
+        return (
+            self.db.query(Expense)
+            .filter(Expense.is_recurring.is_(True))
+            .filter(Expense.expense_date < start_date)
+            .order_by(Expense.expense_date.desc())
+            .all()
+        )
+
 
 def _next_month_date(year: int, month: int) -> date:
     if month == 12:

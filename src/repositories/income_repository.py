@@ -18,6 +18,16 @@ class IncomeRepository(BaseRepository):
             .all()
         )
 
+    def get_recurring_before_month(self, year: int, month: int):
+        start_date = date(year, month, 1)
+        return (
+            self.db.query(Income)
+            .filter(Income.is_recurring.is_(True))
+            .filter(Income.income_date < start_date)
+            .order_by(Income.income_date.desc())
+            .all()
+        )
+
 
 def _next_month_date(year: int, month: int) -> date:
     if month == 12:

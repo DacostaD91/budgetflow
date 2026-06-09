@@ -18,6 +18,14 @@ def render_incomes_page() -> None:
     selected_year, selected_month = _render_period_selector("income")
     default_income_date = _get_default_date_for_period(selected_year, selected_month)
 
+    if st.button("Generate recurring incomes for selected month"):
+        try:
+            created_incomes = income_service.generate_recurring_incomes_for_month(selected_year, selected_month)
+            st.success(f"Generated {len(created_incomes)} recurring income(s).")
+            st.rerun()
+        except BudgetFlowException as exc:
+            st.error(str(exc))
+
     with st.form("income_form"):
         amount = st.number_input("Amount", min_value=0.0, step=100.0)
         source = st.text_input("Source")

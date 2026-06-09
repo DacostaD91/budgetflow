@@ -1,3 +1,6 @@
+from calendar import monthrange
+from datetime import date
+
 from src.core.exceptions import NotFoundException, ValidationException
 from src.models.expense import Expense
 from src.repositories.category_repository import CategoryRepository
@@ -56,6 +59,36 @@ class ExpenseService:
     def get_expenses_by_category(self, category_id: int):
         return self.expense_repository.get_by_category(category_id)
 
+    def generate_recurring_expenses_for_month(self, year: int, month: int) -> list[Expense]:
+        self._validate_period(year, month)
+        templates = self._get_latest_recurring_expense_templates(year, month)
+        existing_signatures = {
+            self._expense_signature(expense)
+            for expense in self.expense_repository.get_by_month(year, month)
+            if expense.is_recurring
+        }
+
+        created_expenses = []
+        for template in templates:
+            signature = self._expense_signature(template)
+            if signature in existing_signatures:
+                continue
+
+            created_expense = self.create_expense(
+                ExpenseCreateSchema(
+                    amount=template.amount,
+                    category_id=template.category_id,
+                    expense_date=self._build_target_date(template.expense_date, year, month),
+                    payment_method=template.payment_method,
+                    description=template.description,
+                    is_recurring=True,
+                )
+            )
+            created_expenses.append(created_expense)
+            existing_signatures.add(signature)
+
+        return created_expenses
+
     def _validate_expense_data(self, expense_data: ExpenseCreateSchema) -> None:
         validate_positive_amount(expense_data.amount)
 
@@ -67,3 +100,29 @@ class ExpenseService:
 
         if not self.category_repository.get_by_id(expense_data.category_id):
             raise ValidationException("Category does not exist.")
+
+    def _validate_period(self, year: int, month: int) -> None:
+        if year < 1:
+            raise ValidationException("Year must be valid.")
+        if month < 1 or month > 12:
+            raise ValidationException("Month must be between 1 and 12.")
+
+    def _get_latest_recurring_expense_templates(self, year: int, month: int):
+        templates_by_signature = {}
+        for expense in self.expense_repository.get_recurring_before_month(year, month):
+            signature = self._expense_signature(expense)
+            if signature not in templates_by_signature:
+                templates_by_signature[signature] = expense
+        return list(templates_by_signature.values())
+
+    def _expense_signature(self, expense) -> tuple:
+        return (
+            expense.category_id,
+            expense.amount,
+            expense.payment_method,
+            expense.description,
+        )
+
+    def _build_target_date(self, source_date: date, year: int, month: int) -> date:
+        last_day = monthrange(year, month)[1]
+        return date(year, month, min(source_date.day, last_day))

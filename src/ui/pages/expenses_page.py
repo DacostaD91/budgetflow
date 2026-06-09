@@ -18,6 +18,14 @@ def render_expenses_page() -> None:
     selected_year, selected_month = _render_period_selector("expense")
     default_expense_date = _get_default_date_for_period(selected_year, selected_month)
 
+    if st.button("Generate recurring expenses for selected month"):
+        try:
+            created_expenses = expense_service.generate_recurring_expenses_for_month(selected_year, selected_month)
+            st.success(f"Generated {len(created_expenses)} recurring expense(s).")
+            st.rerun()
+        except BudgetFlowException as exc:
+            st.error(str(exc))
+
     with st.form("expense_form"):
         amount = st.number_input("Amount", min_value=0.0, step=100.0)
         category_name = st.selectbox("Category", [""] + list(category_options.keys()))
