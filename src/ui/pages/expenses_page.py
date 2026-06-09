@@ -1,8 +1,12 @@
+from datetime import date
+
 import streamlit as st
 
 from src.core.exceptions import BudgetFlowException
 from src.core.service_factory import get_category_service, get_expense_service
 from src.schemas.expense_schema import ExpenseCreateSchema
+from src.utils.date_utils import get_current_year_month
+from src.utils.money_utils import format_currency
 
 
 def render_expenses_page() -> None:
@@ -11,11 +15,13 @@ def render_expenses_page() -> None:
     category_service = get_category_service()
     categories = category_service.get_expense_categories()
     category_options = {category.name: category.id for category in categories}
+    selected_year, selected_month = _render_period_selector("expense")
+    default_expense_date = _get_default_date_for_period(selected_year, selected_month)
 
     with st.form("expense_form"):
         amount = st.number_input("Amount", min_value=0.0, step=100.0)
         category_name = st.selectbox("Category", [""] + list(category_options.keys()))
-        expense_date = st.date_input("Expense date")
+        expense_date = st.date_input("Expense date", value=default_expense_date)
         payment_method = st.text_input("Payment method")
         description = st.text_area("Description")
         is_recurring = st.checkbox("Recurring expense")
@@ -37,7 +43,39 @@ def render_expenses_page() -> None:
         except BudgetFlowException as exc:
             st.error(str(exc))
 
-    _render_expenses_table(expense_service.get_all_expenses(), expense_service, category_options)
+    monthly_expenses = expense_service.get_monthly_expenses(selected_year, selected_month)
+    st.metric("Total expenses for selected month", format_currency(sum(expense.amount for expense in monthly_expenses)))
+    _render_expenses_table(monthly_expenses, expense_service, category_options)
+
+
+def _render_period_selector(key_prefix: str) -> tuple[int, int]:
+    current_year, current_month = get_current_year_month()
+    col_year, col_month = st.columns(2)
+    with col_year:
+        selected_year = st.number_input(
+            "Year",
+            min_value=2000,
+            max_value=2100,
+            value=current_year,
+            step=1,
+            key=f"{key_prefix}_year_filter",
+        )
+    with col_month:
+        selected_month = st.selectbox(
+            "Month",
+            list(range(1, 13)),
+            index=current_month - 1,
+            format_func=lambda month: f"{month:02d}",
+            key=f"{key_prefix}_month_filter",
+        )
+    return int(selected_year), int(selected_month)
+
+
+def _get_default_date_for_period(year: int, month: int) -> date:
+    today = date.today()
+    if today.year == year and today.month == month:
+        return today
+    return date(year, month, 1)
 
 
 def _render_expenses_table(expenses, expense_service, category_options: dict[str, int]) -> None:

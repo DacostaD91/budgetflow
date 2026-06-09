@@ -1,8 +1,12 @@
+from datetime import date
+
 import streamlit as st
 
 from src.core.exceptions import BudgetFlowException
 from src.core.service_factory import get_category_service, get_income_service
 from src.schemas.income_schema import IncomeCreateSchema
+from src.utils.date_utils import get_current_year_month
+from src.utils.money_utils import format_currency
 
 
 def render_incomes_page() -> None:
@@ -11,11 +15,13 @@ def render_incomes_page() -> None:
     category_service = get_category_service()
     categories = category_service.get_income_categories()
     category_options = {category.name: category.id for category in categories}
+    selected_year, selected_month = _render_period_selector("income")
+    default_income_date = _get_default_date_for_period(selected_year, selected_month)
 
     with st.form("income_form"):
         amount = st.number_input("Amount", min_value=0.0, step=100.0)
         source = st.text_input("Source")
-        income_date = st.date_input("Income date")
+        income_date = st.date_input("Income date", value=default_income_date)
         category_name = st.selectbox("Category", [""] + list(category_options.keys()))
         description = st.text_area("Description")
         is_recurring = st.checkbox("Recurring income")
@@ -37,7 +43,39 @@ def render_incomes_page() -> None:
         except BudgetFlowException as exc:
             st.error(str(exc))
 
-    _render_incomes_table(income_service.get_all_incomes(), income_service, category_options)
+    monthly_incomes = income_service.get_monthly_incomes(selected_year, selected_month)
+    st.metric("Total income for selected month", format_currency(sum(income.amount for income in monthly_incomes)))
+    _render_incomes_table(monthly_incomes, income_service, category_options)
+
+
+def _render_period_selector(key_prefix: str) -> tuple[int, int]:
+    current_year, current_month = get_current_year_month()
+    col_year, col_month = st.columns(2)
+    with col_year:
+        selected_year = st.number_input(
+            "Year",
+            min_value=2000,
+            max_value=2100,
+            value=current_year,
+            step=1,
+            key=f"{key_prefix}_year_filter",
+        )
+    with col_month:
+        selected_month = st.selectbox(
+            "Month",
+            list(range(1, 13)),
+            index=current_month - 1,
+            format_func=lambda month: f"{month:02d}",
+            key=f"{key_prefix}_month_filter",
+        )
+    return int(selected_year), int(selected_month)
+
+
+def _get_default_date_for_period(year: int, month: int) -> date:
+    today = date.today()
+    if today.year == year and today.month == month:
+        return today
+    return date(year, month, 1)
 
 
 def _render_incomes_table(incomes, income_service, category_options: dict[str, int]) -> None:
