@@ -4,6 +4,7 @@ from src.core.database import init_database
 from src.seed.seed_data import seed_default_categories
 from src.ui.pages.budgets_page import render_budgets_page
 from src.ui.pages.dashboard_page import render_dashboard_page
+from src.ui.pages.debts_page import render_debts_page
 from src.ui.pages.expenses_page import render_expenses_page
 from src.ui.pages.incomes_page import render_incomes_page
 from src.ui.sidebar import render_sidebar
@@ -24,6 +25,8 @@ def main() -> None:
         render_expenses_page()
     elif page == "Budgets":
         render_budgets_page()
+    elif page == "Debts":
+        render_debts_page()
 
 
 if __name__ == "__main__":

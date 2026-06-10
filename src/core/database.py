@@ -22,6 +22,8 @@ def get_db_session() -> Generator:
 
 def init_database() -> None:
     from src.models.category import Category  # noqa: F401
+    from src.models.debt import Debt  # noqa: F401
+    from src.models.debt_payment import DebtPayment  # noqa: F401
     from src.models.expense import Expense  # noqa: F401
     from src.models.income import Income  # noqa: F401
     from src.models.monthly_budget import MonthlyBudget  # noqa: F401

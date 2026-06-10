@@ -51,3 +51,14 @@ def render_budget_usage_chart(data):
     )
     figure.add_hline(y=100, line_dash="dash", line_color="red")
     st.plotly_chart(figure, use_container_width=True)
+
+
+def render_debt_balance_chart(data):
+    if not data:
+        st.info("No debt data available.")
+        return
+
+    dataframe = pd.DataFrame(data)
+    figure = px.bar(dataframe, x="name", y="current_balance", color="status")
+    figure.update_layout(xaxis_title="Debt", yaxis_title="Current Balance")
+    st.plotly_chart(figure, use_container_width=True)

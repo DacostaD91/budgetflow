@@ -1,10 +1,13 @@
 from src.core.database import SessionLocal
 from src.repositories.budget_repository import BudgetRepository
 from src.repositories.category_repository import CategoryRepository
+from src.repositories.debt_payment_repository import DebtPaymentRepository
+from src.repositories.debt_repository import DebtRepository
 from src.repositories.expense_repository import ExpenseRepository
 from src.repositories.income_repository import IncomeRepository
 from src.services.budget_service import BudgetService
 from src.services.category_service import CategoryService
+from src.services.debt_service import DebtService
 from src.services.expense_service import ExpenseService
 from src.services.income_service import IncomeService
 from src.services.report_service import ReportService
@@ -43,3 +46,10 @@ def get_budget_service() -> BudgetService:
     category_repository = CategoryRepository(db_session)
     expense_repository = ExpenseRepository(db_session)
     return BudgetService(budget_repository, category_repository, expense_repository)
+
+
+def get_debt_service() -> DebtService:
+    db_session = SessionLocal()
+    debt_repository = DebtRepository(db_session)
+    debt_payment_repository = DebtPaymentRepository(db_session)
+    return DebtService(debt_repository, debt_payment_repository)

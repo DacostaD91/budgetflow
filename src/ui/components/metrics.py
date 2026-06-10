@@ -17,3 +17,19 @@ def render_budget_summary_metrics(summary: dict) -> None:
         st.metric("Budget Usage", f"{summary['usage_percentage']:.2f}%")
     with col_overbudget:
         st.metric("Overbudget Categories", summary["overbudget_categories"])
+
+
+def render_debt_summary_metrics(summary: dict) -> None:
+    col_balance, col_payment, col_active, col_paid, col_highest, col_progress = st.columns(6)
+    with col_balance:
+        st.metric("Total Debt Balance", f"DOP {summary['total_debt_balance']:,.2f}")
+    with col_payment:
+        st.metric("Monthly Payment", f"DOP {summary['total_monthly_payment']:,.2f}")
+    with col_active:
+        st.metric("Active Debts", summary["active_debts"])
+    with col_paid:
+        st.metric("Paid Debts", summary["paid_debts"])
+    with col_highest:
+        st.metric("Highest Debt", summary["highest_debt_name"] or "None")
+    with col_progress:
+        st.metric("Average Progress", f"{summary['average_progress']:.2f}%")
