@@ -1,6 +1,8 @@
 # BudgetFlow
 
-BudgetFlow is a personal finance management application built with Python, Streamlit, SQLite and SQLAlchemy.
+BudgetFlow is an agentic personal finance management application built with Python, Streamlit, SQLite and SQLAlchemy.
+
+The project is designed and evolved with AI agent assistance, using a layered architecture that keeps business rules, persistence and presentation concerns separated.
 
 ## Current Features
 
