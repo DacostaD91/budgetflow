@@ -16,7 +16,7 @@ def render_debts_page() -> None:
     render_debt_summary_metrics(summary)
 
     _render_create_debt_form(debt_service)
-    _render_payment_form(debt_service)
+    _render_payment_action(debt_service)
 
     active_debts = debt_service.get_active_debts()
     paid_debts = debt_service.get_paid_debts()
@@ -87,12 +87,17 @@ def _render_create_debt_form(debt_service) -> None:
             st.error(str(exc))
 
 
-def _render_payment_form(debt_service) -> None:
+def _render_payment_action(debt_service) -> None:
     active_debts = debt_service.get_active_debts()
     if not active_debts:
         return
 
-    st.subheader("Register Payment")
+    if st.button("Register Payment"):
+        _render_payment_dialog(debt_service, active_debts)
+
+
+@st.dialog("Register Payment")
+def _render_payment_dialog(debt_service, active_debts) -> None:
     debt_options = {f"{debt.name} - {debt.lender}": debt.id for debt in active_debts}
     with st.form("debt_payment_form"):
         debt_label = st.selectbox("Debt", list(debt_options.keys()))
